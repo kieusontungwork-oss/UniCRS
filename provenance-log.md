@@ -50,7 +50,7 @@ Official repo: https://github.com/RUCAIBox/UniCRS
 |-------|-------|-----|----------|-------|
 | Stage 2: Download | | | | |
 | Stage 3: KG extract | | | | |
-| Stage 4: Data prep | | | | |
+| Stage 4: Data prep | 2026-10-26 | 2026-10-26 | ~2 min | Story 1.4: pre variant from `process.py`, scratch run on dogbench-gpu |
 | Stage 5: Prompt pre | | | | |
 | Stage 6: Conv train | | | | |
 | Stage 6: Inference | | | | |
@@ -64,6 +64,20 @@ Official repo: https://github.com/RUCAIBox/UniCRS
 | DBpedia ttl | data/dbpedia/mappingbased-objects_lang=en.ttl.bz2 | ~400 MB | (sha256) |
 | ReDial sub-KG | data/redial/subkg.json | | |
 | Tokenized data | src/data/redial/*.pkl | | |
+| ReDial mask variant | data/redial/*_data_processed.jsonl | 70,586 lines (56,355/6,253/7,978) | data/redial/MANIFEST.sha256 |
+| ReDial pre variant | data/redial_pre/*_data_processed.jsonl | 139,557 lines (111,458/12,395/15,704) | data/redial_pre/MANIFEST.sha256 |
+
+### Story 1.4 run record (2026-10-26, dogbench-gpu)
+
+| Item | Value |
+|------|-------|
+| Command | `uv run --isolated --no-project --python 3.10 --with tqdm==4.66.1 python process.py` |
+| Python | 3.10.22 (uv-managed) |
+| tqdm | 4.66.1 |
+| Input | scratch copy of `data/redial/` (`*_data_dbpedia.jsonl`, `entity2id.json`) |
+| Output lines | train 111,458 / valid 12,395 / test 15,704 (total 139,557) |
+| `item_ids.json` | byte-identical to `data/redial/item_ids.json` (`cmp` clean); 6,281 items |
+| Manifests | 17 tracked files in `data/redial/`, 3 files in `data/redial_pre/`, both `LC_ALL=C` sorted, `sha256sum -c` clean |
 
 ## Checkpoints
 
