@@ -42,7 +42,25 @@ Official repo: https://github.com/RUCAIBox/UniCRS
 
 | File | Line | Old | New | Reason |
 |------|------|-----|-----|--------|
-| (fill as patches are applied) | | | | |
+| Dockerfile | 2 | `FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS base-cuda` | `FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04@sha256:f4d8e1264366940438f0353da6f289c7bef069d993d111f8106086ccd18c4a30 AS base-cuda` | Story 1.3: 12.1.0 base is EOL; 12.1.1 pinned by digest for reproducible builds (torch cu121 wheels bundle their own CUDA/cuDNN) |
+| Dockerfile | 12 | (absent) | `ENV WANDB_MODE=disabled` | Story 1.3: training scripts import wandb; runs must stay offline, never hit wandb servers |
+| .dockerignore | new | (absent) | `data/`, `runs/`, `save/`, `hf_cache/`, `.git` | Story 1.3: build context must not bake datasets, outputs or git history into the image (AD-1: data is mounted, not copied) |
+| Makefile | 13 | smoke imports torch, transformers, accelerate, torch_scatter | smoke imports torch, transformers, accelerate, torch_geometric, torch_scatter, torch_sparse, loguru, nltk, wandb, numpy, tqdm and prints versions + `cuda=True` | Story 1.3: smoke must cover every third-party module the training scripts use |
+| requirements.lock | (whole file) | 23 top-level pins | full transitive freeze from the working container (+ loguru, nltk, wandb), `--extra-index-url` (cu121) and `--find-links` (pyg) kept, `+cu121` / `+pt21cu121` local versions kept | Story 1.3: locked, rebuildable environment |
+| requirements-cpu.lock | (unchanged) | 23 top-level pins | kept minimal (not frozen) | Story 1.3 decision: CPU variant is unused for baseline stages; frozen only if a CPU run becomes load-bearing |
+
+### Story 1.3 build record (2026-10-26, dogbench-gpu)
+
+| Item | Value |
+|------|-------|
+| Base image | `nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04@sha256:f4d8e1264366940438f0353da6f289c7bef069d993d111f8106086ccd18c4a30` |
+| `requirements.lock` | full transitive freeze: 74 packages (incl. loguru 0.7.3, nltk 3.10.4, wandb 0.31.0); `--extra-index-url` (cu121) and `--find-links` (pyg) kept; `+cu121` / `+pt21cu121` local versions kept |
+| Reproduction check | image rebuilt from the lock alone; `pip freeze` inside the rebuild is **byte-identical** to the captured environment (74/74) |
+| Smoke (`make smoke`) | imports torch, transformers, accelerate, torch_geometric, torch_scatter, torch_sparse, loguru, nltk, wandb, numpy, tqdm; `torch=2.1.2+cu121 transformers=4.30.2 accelerate=0.20.3 torch_geometric=2.4.0 numpy=1.26.2 tqdm=4.66.1 cuda=True` |
+| Image | `unicrs:baseline`, id `efdc04315ef5`, 13.3 GB unpacked |
+| Fallback | `docker save \| gzip` → `~/NTU_Projects/unicrs-image-backup/unicrs-baseline-2026-10-26.tar.gz` (+ `.sha256`); laptop copy pending the dogbench→laptop backup key (Day-0 step 6) |
+| wandb note | wandb 0.31.0: GitPython, sentry-sdk, prometheus-client, setproctitle are optional extras and not installed; `WANDB_MODE=disabled` needs none of them |
+| Host note | `make smoke` / builds run with `--gpus all`; the NVIDIA MOTD banner in container stdout is harmless and must not be parsed by scripts |
 
 ## Wall-Clock Actuals
 

@@ -11,7 +11,7 @@ build:
 	docker build --build-arg VARIANT=$(VARIANT) -t $(IMAGE) .
 
 smoke:
-	docker run --rm --gpus all $(IMAGE) python -c "import torch, transformers, accelerate, torch_scatter; print(f'torch={torch.__version__} transformers={transformers.__version__} accelerate={accelerate.__version__} cuda={torch.cuda.is_available()}')"
+	docker run --rm --gpus all $(IMAGE) python -c "import torch, transformers, accelerate, torch_geometric, torch_scatter, torch_sparse, loguru, nltk, wandb, numpy, tqdm; print(f'torch={torch.__version__} transformers={transformers.__version__} accelerate={accelerate.__version__} torch_geometric={torch_geometric.__version__} numpy={numpy.__version__} tqdm={tqdm.__version__} cuda={torch.cuda.is_available()}')"
 
 stage0:
 	@echo "Stage 0: Prereqs - run on host, not in container"
