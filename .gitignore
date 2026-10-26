@@ -236,3 +236,17 @@ cython_debug/
 
 # Local History for Visual Studio Code
 .history/
+
+# Large data files (downloaded/generated)
+data/dbpedia/kg.pkl
+data/dbpedia/*.ttl
+data/dbpedia/*.ttl.bz2
+data/redial/*_raw.jsonl
+src/data/redial/*_raw.jsonl
+
+# Model checkpoints
+runs/
+save/
+
+# HF cache
+hf_cache/
