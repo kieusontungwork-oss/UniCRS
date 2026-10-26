@@ -78,6 +78,7 @@ Official repo: https://github.com/RUCAIBox/UniCRS
 | Output lines | train 111,458 / valid 12,395 / test 15,704 (total 139,557) |
 | `item_ids.json` | byte-identical to `data/redial/item_ids.json` (`cmp` clean); 6,281 items |
 | Manifests | 17 tracked files in `data/redial/`, 3 files in `data/redial_pre/`, both `LC_ALL=C` sorted, `sha256sum -c` clean |
+| Post-merge check | Fresh clone `3a4c8b7` on dogbench-gpu: `sha256sum -c` clean in both folders (2026-10-26) |
 
 ## Checkpoints
 
