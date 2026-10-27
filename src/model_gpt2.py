@@ -584,10 +584,12 @@ class PromptGPT2forCRS(GPT2PreTrainedModel):
     def prepare_inputs_for_generation(
         self, input_ids, past=None, prompt_embeds=None, **kwargs
     ):
-        # stack.md patch 6 (PROVISIONAL, kept only if story 1.6 confirms identical
-        # greedy outputs): transformers >= 4.21 hands the KV cache to us as
-        # `past_key_values` (4.15 used `past`); accept both so generation
-        # actually uses the cache. The return dict below already forwards it.
+        # stack.md patch 6 (CONFIRMED by story 1.6, 2026-10-27): transformers
+        # >= 4.21 hands the KV cache to us as `past_key_values` (4.15 used
+        # `past`); accept both so generation actually uses the cache. Greedy
+        # outputs on 64 test dialogues are byte-identical with and without
+        # this line (sha256 3b53499e…, runs/calib/kv-{on,off}); generation is
+        # ~8x faster with it. The return dict below already forwards it.
         past = kwargs.pop("past_key_values", past)
         token_type_ids = kwargs.get("token_type_ids", None)
         # only last token for inputs_ids if past is defined in kwargs

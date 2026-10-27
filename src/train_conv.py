@@ -77,7 +77,9 @@ if __name__ == '__main__':
     config = vars(args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us.
-    accelerator = Accelerator(device_placement=False, fp16=args.fp16)
+    # stack.md patch 14 (story 1.6): accelerate 0.20 removed the `fp16` kwarg;
+    # mixed_precision='no' keeps the fp32 recipe unchanged (args.fp16 is never set)
+    accelerator = Accelerator(device_placement=False, mixed_precision=('fp16' if args.fp16 else 'no'))
     device = accelerator.device
 
     # Make one log on every process with the configuration for debugging.
