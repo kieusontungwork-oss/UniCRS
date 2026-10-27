@@ -5,7 +5,8 @@ parser = ArgumentParser()
 parser.add_argument("--gen_file_prefix", type=str, required=True)
 args = parser.parse_args()
 gen_file_prefix = args.gen_file_prefix
-dataset = 'inspired'
+# stack.md patch 5: upstream hard-codes 'inspired'; ReDial runs need 'redial'
+dataset = 'redial'
 
 for split in ['train', 'valid', 'test']:
     raw_file_path = f"../{dataset}/{split}_data_processed.jsonl"
