@@ -48,6 +48,26 @@ Official repo: https://github.com/RUCAIBox/UniCRS
 | Makefile | 13 | smoke imports torch, transformers, accelerate, torch_scatter | smoke imports torch, transformers, accelerate, torch_geometric, torch_scatter, torch_sparse, loguru, nltk, wandb, numpy, tqdm and prints versions + `cuda=True` | Story 1.3: smoke must cover every third-party module the training scripts use |
 | requirements.lock | (whole file) | 23 top-level pins | full transitive freeze from the working container (+ loguru, nltk, wandb), `--extra-index-url` (cu121) and `--find-links` (pyg) kept, `+cu121` / `+pt21cu121` local versions kept | Story 1.3: locked, rebuildable environment |
 | requirements-cpu.lock | (unchanged) | 23 top-level pins | kept minimal (not frozen) | Story 1.3 decision: CPU variant is unused for baseline stages; frozen only if a CPU run becomes load-bearing |
+| Makefile | 36–52 (stage 5–7 targets) | commands run from `/app`; scripts live in `/app/src` | `cd src &&` before every `accelerate launch` | Story 1.5 (stack.md patch 1) |
+| Makefile | 36–52 (stage 5–7 targets) | `-v $(DATA):/app/data` read-write, nothing staged — the code reads `src/data/<dataset>` relative to cwd | `-v $(DATA):/app/data:ro` plus the target copies its variant into the container's `src/data/redial/`; stage 5 then overwrites the three jsonl with `data/redial_pre/`'s | Story 1.5 (stack.md patch 2; variant directories created by story 1.4) |
+| Makefile | 45, 51 (stage6-infer, stage7) | `-v $(SAVE):/app/save` | `-v $(SAVE):/app/src/save` — `infer_conv.py:163` writes `save/redial` relative to `/app/src` | Story 1.5 (stack.md patch 3) |
+| Makefile | 51–52 (stage7) | `python data/redial_gen/merge.py --gen_file_prefix dialogpt` run from `/app` | `(cd data/redial_gen && python merge.py --gen_file_prefix unicrs-conv)`, then `mkdir -p save/redial_gen && cp data/redial_gen/*_data_processed.jsonl save/redial_gen/` | Story 1.5 (stack.md patch 4) + prefix change: `infer_conv.py:165` names outputs after `--prompt_encoder`'s parent folder, so stage 6 now writes `save/redial/unicrs-conv_{train,valid,test}.jsonl` and merge must consume that prefix |
+| `src/data/redial_gen/merge.py` | 8 | `dataset = 'inspired'` | `dataset = 'redial'` | Story 1.5 (stack.md patch 5): upstream hard-codes the wrong dataset; merge would read `data/inspired/` and `save/inspired/` |
+| `src/model_gpt2.py` | 585–588 | `def prepare_inputs_for_generation(self, input_ids, past=None, prompt_embeds=None, **kwargs)` — transformers 4.30.2 passes the cache as `past_key_values`, so `past` stayed empty, the KV cache was unused and generation ran ~10× slower | first line of the body: `past = kwargs.pop("past_key_values", past)` (the return dict already forwards `past_key_values`) | Story 1.5 (stack.md patch 6): **PROVISIONAL** — kept only if story 1.6 confirms identical greedy outputs on 64 test dialogues; otherwise reverted and the projection redone |
+| Makefile | 36–52 (stage 5–7 targets) | `--prompt_encoder ../runs/unicrs-prompt-pre` (stage 6 infer: `../runs/unicrs-conv`) — `KGPrompt.load` (model_prompt.py:140) reads `<dir>/model.pt`, which exists only under `best/` and `final/` | `--prompt_encoder ../runs/unicrs-prompt-pre/best` (stage 6 infer: `../runs/unicrs-conv/best`, no trailing slash so outputs keep the `unicrs-conv_` prefix) | Story 1.5 (stack.md patch 10) |
+| Makefile | 36–52 (stage 5–7 targets) | targets overwrite existing outputs; log starts with docker output | host-side guard aborts a target whose output already exists (`runs/unicrs-prompt-pre`, `runs/unicrs-conv`, `save/redial/unicrs-conv_*.jsonl`, `runs/unicrs-rec`, `save/redial_gen`); stage 7 also requires the stage 6 outputs to exist; every target echoes `git rev-parse HEAD` as the first log line | Story 1.5 (stack.md patch 12, Makefile part; output isolation AD-4, clean-checkout rule) |
+| Makefile | 58–60 (`clean`) | `docker rmi` **plus** `rm -rf $(RUNS)/* $(SAVE)/*` | `docker rmi` only | Story 1.5 (stack.md patch 12): `make clean` must never delete outputs |
+
+### Story 1.5 record (2026-10-27, dogbench-gpu)
+
+| Item | Value |
+|------|-------|
+| Scope | stack.md patches 1, 2, 3, 4, 5, 6, 10 + Makefile parts of 11/12 (staging, abort guards, sha echo, image-only `clean`); patches 7–9 were story 1.3, variant directories were story 1.4 |
+| Verification | `make -n` inspection of all four targets; per-target container wiring dry-runs (staging + path assertions, no training); `py_compile` on both patched files; `merge.py` fixture run against a synthetic `redial/` + `save/redial/` tree; guard tests (existing output → abort before docker starts; `make clean` leaves `runs/` and `save/` untouched) |
+| Image rebuilt 2026-10-27 | `make build` from this branch (pip layers cached): `unicrs:baseline` `efdc04315ef5` → `bfa428184794` so the baked `/app/src` carries patches 5 and 6; smoke re-passed (`cuda=True`, same versions). **Stage runs before story 1.6 must use the rebuilt image** — the stage targets execute the image's code copy, not the host working tree |
+| Effective batches | unchanged by this story: pre 16×4 / conv 2×4 / rec 16×4 = README effective 64 / 8 / 64; story 1.6 recalibrates micro-batches for the 8 GB card and commits the result |
+| Expected stage outputs | stage 5 → `runs/unicrs-prompt-pre/best/model.pt`; stage 6 → `runs/unicrs-conv/best/model.pt` + `save/redial/unicrs-conv_{train,valid,test}.jsonl` (70,586 lines total); stage 7 → `runs/unicrs-rec/best/model.pt` + merged jsonl under `save/redial_gen/` |
+| KV patch status | applied provisionally; story 1.6 must confirm identical greedy outputs on 64 test dialogues with and without it, else revert |
 
 ### Story 1.3 build record (2026-10-26, dogbench-gpu)
 
@@ -110,6 +130,11 @@ Official repo: https://github.com/RUCAIBox/UniCRS
 
 | File | Path |
 |------|------|
-| Train jsonl | save/redial/dialogpt_train.jsonl |
-| Valid jsonl | save/redial/dialogpt_valid.jsonl |
-| Test jsonl | save/redial/dialogpt_test.jsonl |
+| Train jsonl | save/redial/unicrs-conv_train.jsonl |
+| Valid jsonl | save/redial/unicrs-conv_valid.jsonl |
+| Test jsonl | save/redial/unicrs-conv_test.jsonl |
+| Merged rec files (stage 7) | save/redial_gen/{train,valid,test}_data_processed.jsonl |
+
+> Names changed by story 1.5: `infer_conv.py:165` derives the output prefix from
+> `--prompt_encoder`'s parent folder (`unicrs-conv`), replacing the earlier
+> `dialogpt_*` expectation; merge consumes exactly that prefix.

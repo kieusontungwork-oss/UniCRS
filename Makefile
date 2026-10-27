@@ -34,22 +34,31 @@ stage4:
 		bash -c "cp -r data/redial src/data/ && cd src && python data/redial/process.py && python data/redial/process_mask.py"
 
 stage5:
-	docker run --rm --gpus all -v $(DATA):/app/data -v $(RUNS):/app/runs -v $(HF_CACHE):/hf_cache $(IMAGE) \
-		bash -c "accelerate launch train_pre.py --dataset redial --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --num_train_epochs 5 --gradient_accumulation_steps 4 --per_device_train_batch_size 16 --per_device_eval_batch_size 32 --num_warmup_steps 1389 --max_length 200 --prompt_max_length 200 --entity_max_length 32 --learning_rate 5e-4 --output_dir ../runs/unicrs-prompt-pre"
+	@test ! -e $(RUNS)/unicrs-prompt-pre || { echo "ABORT: runs/unicrs-prompt-pre already exists (full-run targets never overwrite)"; exit 1; }
+	@git rev-parse HEAD
+	@docker run --rm --gpus all -v $(DATA):/app/data:ro -v $(RUNS):/app/runs -v $(HF_CACHE):/hf_cache $(IMAGE) \
+		bash -c "cd src && cp -r /app/data/redial/. data/redial/ && cp /app/data/redial_pre/*_data_processed.jsonl data/redial/ && accelerate launch train_pre.py --dataset redial --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --num_train_epochs 5 --gradient_accumulation_steps 4 --per_device_train_batch_size 16 --per_device_eval_batch_size 32 --num_warmup_steps 1389 --max_length 200 --prompt_max_length 200 --entity_max_length 32 --learning_rate 5e-4 --output_dir ../runs/unicrs-prompt-pre"
 
 stage6-train:
-	docker run --rm --gpus all -v $(DATA):/app/data -v $(RUNS):/app/runs -v $(HF_CACHE):/hf_cache $(IMAGE) \
-		bash -c "accelerate launch train_conv.py --dataset redial --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --n_prefix_conv 20 --prompt_encoder ../runs/unicrs-prompt-pre --num_train_epochs 10 --gradient_accumulation_steps 4 --ignore_pad_token_for_loss --per_device_train_batch_size 2 --per_device_eval_batch_size 32 --num_warmup_steps 6345 --context_max_length 200 --resp_max_length 183 --prompt_max_length 200 --entity_max_length 32 --learning_rate 1e-4 --output_dir ../runs/unicrs-conv"
+	@test ! -e $(RUNS)/unicrs-conv || { echo "ABORT: runs/unicrs-conv already exists (full-run targets never overwrite)"; exit 1; }
+	@git rev-parse HEAD
+	@docker run --rm --gpus all -v $(DATA):/app/data:ro -v $(RUNS):/app/runs -v $(HF_CACHE):/hf_cache $(IMAGE) \
+		bash -c "cd src && cp -r /app/data/redial/. data/redial/ && accelerate launch train_conv.py --dataset redial --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --n_prefix_conv 20 --prompt_encoder ../runs/unicrs-prompt-pre/best --num_train_epochs 10 --gradient_accumulation_steps 4 --ignore_pad_token_for_loss --per_device_train_batch_size 2 --per_device_eval_batch_size 32 --num_warmup_steps 6345 --context_max_length 200 --resp_max_length 183 --prompt_max_length 200 --entity_max_length 32 --learning_rate 1e-4 --output_dir ../runs/unicrs-conv"
 
 stage6-infer:
-	docker run --rm --gpus all -v $(DATA):/app/data -v $(RUNS):/app/runs -v $(SAVE):/app/save -v $(HF_CACHE):/hf_cache $(IMAGE) \
-		bash -c 'for split in train valid test; do accelerate launch infer_conv.py --dataset redial --split $$split --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --n_prefix_conv 20 --prompt_encoder ../runs/unicrs-conv --per_device_eval_batch_size 32 --context_max_length 200 --resp_max_length 183 --prompt_max_length 200 --entity_max_length 32; done'
+	@test ! -e $(SAVE)/redial/unicrs-conv_train.jsonl -a ! -e $(SAVE)/redial/unicrs-conv_valid.jsonl -a ! -e $(SAVE)/redial/unicrs-conv_test.jsonl || { echo "ABORT: save/redial/unicrs-conv_*.jsonl already exist (full-run targets never overwrite)"; exit 1; }
+	@git rev-parse HEAD
+	@docker run --rm --gpus all -v $(DATA):/app/data:ro -v $(RUNS):/app/runs -v $(SAVE):/app/src/save -v $(HF_CACHE):/hf_cache $(IMAGE) \
+		bash -c 'cd src && cp -r /app/data/redial/. data/redial/ && for split in train valid test; do accelerate launch infer_conv.py --dataset redial --split $$split --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --n_prefix_conv 20 --prompt_encoder ../runs/unicrs-conv/best --per_device_eval_batch_size 32 --context_max_length 200 --resp_max_length 183 --prompt_max_length 200 --entity_max_length 32; done'
 
 stage6: stage6-train stage6-infer
 
 stage7:
-	docker run --rm --gpus all -v $(DATA):/app/data -v $(RUNS):/app/runs -v $(SAVE):/app/save -v $(HF_CACHE):/hf_cache $(IMAGE) \
-		bash -c "cp -r data/redial/. data/redial_gen/ && python data/redial_gen/merge.py --gen_file_prefix dialogpt && accelerate launch train_rec.py --dataset redial_gen --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --n_prefix_rec 10 --prompt_encoder ../runs/unicrs-prompt-pre --num_train_epochs 5 --gradient_accumulation_steps 4 --per_device_train_batch_size 16 --per_device_eval_batch_size 32 --num_warmup_steps 530 --context_max_length 200 --prompt_max_length 200 --entity_max_length 32 --learning_rate 1e-4 --output_dir ../runs/unicrs-rec"
+	@test -f $(SAVE)/redial/unicrs-conv_train.jsonl -a -f $(SAVE)/redial/unicrs-conv_valid.jsonl -a -f $(SAVE)/redial/unicrs-conv_test.jsonl || { echo "ABORT: stage6-infer outputs missing under save/redial/ - run stage6-infer first"; exit 1; }
+	@test ! -e $(RUNS)/unicrs-rec -a ! -e $(SAVE)/redial_gen || { echo "ABORT: runs/unicrs-rec or save/redial_gen already exists (full-run targets never overwrite)"; exit 1; }
+	@git rev-parse HEAD
+	@docker run --rm --gpus all -v $(DATA):/app/data:ro -v $(RUNS):/app/runs -v $(SAVE):/app/src/save -v $(HF_CACHE):/hf_cache $(IMAGE) \
+		bash -c "cd src && cp -r /app/data/redial/. data/redial/ && mkdir -p data/redial_gen && cp -r data/redial/. data/redial_gen/ && (cd data/redial_gen && python merge.py --gen_file_prefix unicrs-conv) && mkdir -p save/redial_gen && cp data/redial_gen/*_data_processed.jsonl save/redial_gen/ && accelerate launch train_rec.py --dataset redial_gen --tokenizer microsoft/DialoGPT-small --model microsoft/DialoGPT-small --text_tokenizer roberta-base --text_encoder roberta-base --n_prefix_rec 10 --prompt_encoder ../runs/unicrs-prompt-pre/best --num_train_epochs 5 --gradient_accumulation_steps 4 --per_device_train_batch_size 16 --per_device_eval_batch_size 32 --num_warmup_steps 530 --context_max_length 200 --prompt_max_length 200 --entity_max_length 32 --learning_rate 1e-4 --output_dir ../runs/unicrs-rec"
 
 stage8:
 	@echo "Stage 8: Record Recall@1/10/50 from train_rec eval logs"
@@ -57,4 +66,3 @@ stage8:
 
 clean:
 	docker rmi $(IMAGE) 2>/dev/null || true
-	rm -rf $(RUNS)/* $(SAVE)/*
