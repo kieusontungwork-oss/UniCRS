@@ -1,5 +1,5 @@
 ARG VARIANT=cuda
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS base-cuda
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04@sha256:f4d8e1264366940438f0353da6f289c7bef069d993d111f8106086ccd18c4a30 AS base-cuda
 FROM python:3.10-slim AS base-cpu
 
 FROM base-${VARIANT} AS final
@@ -9,6 +9,7 @@ ARG VARIANT=cuda
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/hf_cache
+ENV WANDB_MODE=disabled
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
