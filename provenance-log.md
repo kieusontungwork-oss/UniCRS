@@ -121,7 +121,12 @@ Effective batches stay at README values (pre 64 / conv 8 / rec 64) via gradient 
 
 ### Owner go/no-go (CAP-6 gate)
 
-*(pending — to be quoted verbatim from ConvRecX issue #12 before any full stage runs)*
+**GO** — owner verdict given 2026-10-28 in the working session, immediately after reviewing the calibration record and PR #8 ("go + merge. Do not implement the story 1.7 yet"):
+- approved the full stages 5–7 run at the chosen configs (≈ 22.3 GPU-hours projected);
+- merged fork PR #8 himself via the agent (merge commit `026bc11`);
+- explicitly instructed that story 1.7 must **not** be started yet — launch waits for his separate go.
+
+Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontungwork-oss/ConvRecX/issues/12
 
 
 
