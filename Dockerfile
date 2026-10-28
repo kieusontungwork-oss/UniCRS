@@ -10,6 +10,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
 ENV HF_HOME=/hf_cache
 ENV WANDB_MODE=disabled
+# stack.md patch 15 (story 1.6): torch 2.1 expandable-segments allocator — kills the
+# reserved-but-unallocated fragmentation that caused OOM at ~95% VRAM (see the
+# calibration runs pre-mb16 vs pre-mb16-x); numerics-neutral (allocation layout only).
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -27,6 +31,12 @@ COPY requirements.lock .
 RUN pip install --no-cache-dir -r requirements.lock
 
 COPY . .
+
+# stack.md patch 13 (story 1.6, decision D-1): stage targets run with
+# --user $(id -u):$(id -g) so mounted outputs are owned by the host user;
+# the container user needs write access to the baked code tree for data
+# staging (src/data/redial, src/data/redial_gen) and loguru sinks (src/log).
+RUN chmod -R a+rwX /app/src
 
 VOLUME ["/app/data", "/app/src/data", "/app/runs", "/app/save", "/hf_cache"]
 
