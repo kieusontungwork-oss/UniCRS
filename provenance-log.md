@@ -150,7 +150,7 @@ Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontung
 | Stage 2: Download | | | | |
 | Stage 3: KG extract | | | | |
 | Stage 4: Data prep | 2026-10-26 | 2026-10-26 | ~2 min | Story 1.4: pre variant from `process.py`, scratch run on dogbench-gpu |
-| Stage 5: Prompt pre | | | | |
+| Stage 5: Prompt pre | 2026-10-30 16:04 | 2026-10-30 21:53 | 5 h 50 m | Story 1.7: commit `4953703`, log `runs/logs/stage5-20261030-160425.log` (EXIT_CODE=0); 6,945 steps @ 2.77 s/it, peak VRAM 7,737 MiB; vs 7.0 h projection — faster because real steps 6,945 < projected 8,710 (projection assumed unfiltered train size); best epoch 4 valid loss 1.920, test R@1 0.566 / R@10 0.906 / R@50 0.929, MRR@10 0.705 |
 | Stage 6: Conv train | | | | |
 | Stage 6: Inference | | | | |
 | Stage 7: Rec train | | | | |
