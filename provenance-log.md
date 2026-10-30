@@ -132,6 +132,8 @@ Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontung
 
 **2026-10-31 — stage 6 started (story 1.8).** Covered by the standing GO of 2026-10-28 (stages 5–7 at chosen configs); owner instructed launch in the working session. `make stage6` (train_conv + 3-split infer_conv) from a clean checkout of this commit, in tmux on dogbench-gpu, no make-variable overrides; log `runs/logs/stage6-*.log` starting with the commit sha. Projection ≈ 11.9 h (10.8 h train @ 0.48 s/step × 70,445 steps + 1.1 h inference over 70,586 samples). Completion bookkeeping follows per the story AC; closes as issue #14.
 
+**2026-10-31 — stage 6 first launch OOMed; fallback to calibrated conv-mb4 (4×2).** The 8×1 launch (commit `4c36fee`) died at optimizer step ~5,376/63,450 (still epoch 0, 42 min in): `CUDA out of memory. Tried to allocate 586.00 MiB` (max-length response batch: 8 × 183 × 50,257-vocab logits) with 7.30 GiB already allocated, 123 MiB free, only 54 MiB reserved-unallocated (not fragmentation). Calibration's 50-step mb8 probe peaked at 6,449 MiB and never sampled a max-length batch — the full run's steady state ran ~850 MiB hotter. Decision: fall back to the calibrated **conv-mb4 (4×2, eval 16)** — effective batch 8 unchanged (identical optimizer math), measured peaks train 4,691 / valid 5,253 / test 6,353 MiB ⇒ worst-case spike at micro 4 is ~293 MiB, ample headroom; cost ≈ +21% wall-clock (0.58 vs 0.48 s/step, ≈ 12.7 h vs 10.8 h projected). Recovery: deleted the empty partial `runs/unicrs-conv/` (no checkpoint written; crash predates the first epoch's valid pass). Makefile patched accordingly (warmup 6,345 kept — optimizer-step based); relaunch from this commit.
+
 
 
 | Item | Value |
