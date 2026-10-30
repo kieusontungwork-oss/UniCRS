@@ -130,6 +130,8 @@ Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontung
 
 **2026-10-30 — hold lifted, stage 5 started.** Owner gave the separate go in the working session ("proceed story 1.7 on dogbench-gpu"). Launch: `make stage5` from a clean checkout of this commit, no make-variable overrides, in tmux on dogbench-gpu; log at `runs/logs/stage5-*.log` starting with the commit sha. Completion bookkeeping (wall-clock actual, output checks, laptop copy) follows in a later session per the story AC.
 
+**2026-10-31 — stage 6 started (story 1.8).** Covered by the standing GO of 2026-10-28 (stages 5–7 at chosen configs); owner instructed launch in the working session. `make stage6` (train_conv + 3-split infer_conv) from a clean checkout of this commit, in tmux on dogbench-gpu, no make-variable overrides; log `runs/logs/stage6-*.log` starting with the commit sha. Projection ≈ 11.9 h (10.8 h train @ 0.48 s/step × 70,445 steps + 1.1 h inference over 70,586 samples). Completion bookkeeping follows per the story AC; closes as issue #14.
+
 
 
 | Item | Value |
