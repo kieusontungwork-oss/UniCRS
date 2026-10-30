@@ -128,6 +128,8 @@ Effective batches stay at README values (pre 64 / conv 8 / rec 64) via gradient 
 
 Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontungwork-oss/ConvRecX/issues/12
 
+**2026-10-30 — hold lifted, stage 5 started.** Owner gave the separate go in the working session ("proceed story 1.7 on dogbench-gpu"). Launch: `make stage5` from a clean checkout of this commit, no make-variable overrides, in tmux on dogbench-gpu; log at `runs/logs/stage5-*.log` starting with the commit sha. Completion bookkeeping (wall-clock actual, output checks, laptop copy) follows in a later session per the story AC.
+
 
 
 | Item | Value |
