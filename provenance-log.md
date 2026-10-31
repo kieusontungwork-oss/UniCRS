@@ -155,8 +155,8 @@ Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontung
 | Stage 3: KG extract | | | | |
 | Stage 4: Data prep | 2026-10-26 | 2026-10-26 | ~2 min | Story 1.4: pre variant from `process.py`, scratch run on dogbench-gpu |
 | Stage 5: Prompt pre | 2026-10-30 16:04 | 2026-10-30 21:53 | 5 h 50 m | Story 1.7: commit `4953703`, log `runs/logs/stage5-20261030-160425.log` (EXIT_CODE=0); 6,945 steps @ 2.77 s/it, peak VRAM 7,737 MiB; vs 7.0 h projection — faster because real steps 6,945 < projected 8,710 (projection assumed unfiltered train size); best epoch 4 valid loss 1.920, test R@1 0.566 / R@10 0.906 / R@50 0.929, MRR@10 0.705 |
-| Stage 6: Conv train | | | | |
-| Stage 6: Inference | | | | |
+| Stage 6: Conv train | 2026-10-31 00:53 | 2026-10-31 13:26 | 12 h 33 m | Story 1.8 attempt 2 (conv-mb4 4×2 fallback after the mb8 OOM, see 2026-10-31 note above; attempt 1 lost 43 min): commit `8e93dd7`, log `runs/logs/stage6-20261031-005310.log` (EXIT_CODE=0); 63,450 steps @ ~0.60 s/step + 10×valid (≈7:40) + final test; best = epoch 8 by BLEU@1 (0.2013), valid loss min 0.4313 @ epoch 7; vs mb4 projection 12.8 h ✓; final test: BLEU@1 0.192, dist@2 0.284, item_ratio 0.465, loss 0.437 (best ckpt) |
+| Stage 6: Inference | 2026-10-31 13:26 | 2026-10-31 14:04 | 39 m | infer_conv ×3 (KV patch on): 63,491 lines (train 50,757 / valid 5,647 / test 7,087), every line has a non-empty `pred`; vs 1.1 h projection. **Delta vs AC's 70,586:** actual equals the run's own logged `sent_cnt` per split exactly — the projection-era count (~10% high, same bias as train steps 70,445 projected vs 63,450 actual) evidently counted turns before the loader's filtering; flagged to owner on issue #14 |
 | Stage 7: Rec train | | | | |
 | **Total** | | | | |
 
