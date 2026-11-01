@@ -136,6 +136,25 @@ Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontung
 
 **2026-11-01 — stage 7 started (story 1.9).** Covered by the standing GO of 2026-10-28 (stages 5–7 at chosen configs); owner instructed launch in the working session. `make stage7` (merge.py → `redial_gen` dataset → `train_rec` 16×4) from a clean checkout of this commit, in tmux on dogbench-gpu, no make-variable overrides; log `runs/logs/stage7-*.log` starting with the commit sha. Projection ≈ 3.5 h (merge in minutes + 4,402 steps × 2.70 s + 5×(valid+test) evals); rec 16×4 carries the proven worst-case padding bound (7,757 MiB fits). Per the story AC, the merged files under `save/redial_gen/` get their own MANIFEST at completion. Closes as issue #15.
 
+## Baseline freeze (story 1.10, 2026-11-01)
+
+Stage 7 completed EXIT_CODE=0. Best epoch by valid loss = **2** (6.6980). Test metrics at that epoch, vs Wang et al., KDD 2022 (UniCRS, ReDial) and the ±15% parity bands:
+
+| Metric | Ours (test, epoch 2) | Paper | Band ±15% | Δ vs paper | Gate |
+|---|---|---|---|---|---|
+| Recall@1 | **0.0475** | 0.051 | [0.0434, 0.0586] | −6.9% | ✅ PASS |
+| Recall@10 | **0.2146** | 0.224 | [0.1904, 0.2576] | −4.2% | ✅ PASS |
+| Recall@50 | **0.4181** | 0.428 | [0.3638, 0.4922] | −2.3% | ✅ PASS |
+
+**GATE: PASS (3/3).** Also at epoch 2: MRR@10 0.0917, NDCG@10 0.1204, test loss 7.1707. Every epoch's valid/test metrics are in the report JSON (`_bmad-output/implementation-artifacts/baselines/unicrs-baseline.json`, ConvRecX).
+
+- **Run commits** (log line 1 of each stage log): stage 5 `4953703`, stage 6 `8e93dd7`, stage 7 `6590274`; all from clean checkouts of `main`, no make-variable overrides, tmux on dogbench-gpu (RTX 4060 8 GB, image `unicrs:baseline`).
+- **Machine per stage:** all three training stages ran on dogbench-gpu; stages 0–4 data prep on dogbench-gpu (story 1.4 scratch run) after the laptop-built image (stories 1.1–1.3).
+- **Data manifests:** `data/redial/MANIFEST.sha256` + `data/redial_pre/MANIFEST.sha256` (story 1.4) and `save/redial_gen/MANIFEST.sha256` = `716964a8f809a9ac4fbf8c64a0f42809edb38d989ba95e51925e0f7de8ba6612` (this story).
+- **Actual vs projected hours:** stage 5 5.83/6.9 h, stage 6 13.20/12.8 h (mb4 fallback after mb8 OOM), stage 7 2.20/3.5 h — full rows in Wall-Clock Actuals above. Projection bias note: all step counts were ~10–20% high (counts taken before loader filtering).
+- **Final versions:** image `unicrs:baseline` (id `44b2cfb9d1e1`, lock rebuilt byte-identical), `requirements.lock` 74 packages, Makefile as of this commit.
+- **Tag:** this provenance-only commit is tagged **`unicrs-baseline-v1`**.
+
 
 
 | Item | Value |
@@ -159,7 +178,7 @@ Recorded on ConvRecX issue #12 (comment + close): https://github.com/kieusontung
 | Stage 5: Prompt pre | 2026-10-30 16:04 | 2026-10-30 21:53 | 5 h 50 m | Story 1.7: commit `4953703`, log `runs/logs/stage5-20261030-160425.log` (EXIT_CODE=0); 6,945 steps @ 2.77 s/it, peak VRAM 7,737 MiB; vs 7.0 h projection — faster because real steps 6,945 < projected 8,710 (projection assumed unfiltered train size); best epoch 4 valid loss 1.920, test R@1 0.566 / R@10 0.906 / R@50 0.929, MRR@10 0.705 |
 | Stage 6: Conv train | 2026-10-31 00:53 | 2026-10-31 13:26 | 12 h 33 m | Story 1.8 attempt 2 (conv-mb4 4×2 fallback after the mb8 OOM, see 2026-10-31 note above; attempt 1 lost 43 min): commit `8e93dd7`, log `runs/logs/stage6-20261031-005310.log` (EXIT_CODE=0); 63,450 steps @ ~0.60 s/step + 10×valid (≈7:40) + final test; best = epoch 8 by BLEU@1 (0.2013), valid loss min 0.4313 @ epoch 7; vs mb4 projection 12.8 h ✓; final test: BLEU@1 0.192, dist@2 0.284, item_ratio 0.465, loss 0.437 (best ckpt) |
 | Stage 6: Inference | 2026-10-31 13:26 | 2026-10-31 14:04 | 39 m | infer_conv ×3 (KV patch on): 63,491 lines (train 50,757 / valid 5,647 / test 7,087), every line has a non-empty `pred`; vs 1.1 h projection. **Delta vs AC's 70,586:** actual equals the run's own logged `sent_cnt` per split exactly — the projection-era count (~10% high, same bias as train steps 70,445 projected vs 63,450 actual) evidently counted turns before the loader's filtering; flagged to owner on issue #14 |
-| Stage 7: Rec train | | | | |
+| Stage 7: Rec train | 2026-11-01 21:22 | 2026-11-01 23:34 | 2 h 12 m | Story 1.9: commit `6590274`, log `runs/logs/stage7-20261101-212223.log` (EXIT_CODE=0); merge minutes + 2,650 steps @ ~2.73 s/it + 5×(valid+test); vs 3.5 h projection (real steps 2,650 < projected 4,402 — the rec dataset derives from the actual 63,491 conv outputs); best = epoch 2 by valid loss (6.6980); `save/redial_gen/` kept with own MANIFEST (`716964a8…`) |
 | **Total** | | | | |
 
 ## Data Artifacts
